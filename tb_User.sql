@@ -1,0 +1,1 @@
+INSERT INTO `tb_User` (`ID`, `Pwd`, `FriendLiitID`, `NickNanme`, `HeadID`, `Sex`, `Age`, `Name`, `Star`, `BloodType`, `Remember`, `AutoLogin`, `Sign`, `Flag`) VALUES (10001, '12345', 1, '1', 1, '男', 100, '龙傲天', NULL, NULL, 0, 0, '个性签名', 1);
