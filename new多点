@@ -1,0 +1,227 @@
+<template>
+  <div class="grid-container">
+    <!-- 输入和按钮 -->
+    <div class="input-section">
+      <span class="title">多点扫描</span>
+      <el-row :gutter="10" align="middle">
+        <el-col :span="9">
+          <span>x-start</span>
+          <el-input-number size="small" v-model="xStart" :min="-99999" :max="99999" :step="1"></el-input-number>
+        </el-col>
+        <el-col :span="9">
+          <span>x-end</span>
+          <el-input-number size="small" v-model="xEnd" :min="-99999" :max="99999" :step="1"></el-input-number>
+        </el-col>
+      </el-row>
+      <br />
+      <el-row :gutter="10" align="middle">
+        <el-col :span="9">
+          <span>y-start</span>
+          <el-input-number size="small" v-model="yStart" :min="-99999" :max="99999" :step="1"></el-input-number>
+        </el-col>
+        <el-col :span="9">
+          <span>y-end</span>
+          <el-input-number size="small" v-model="yEnd" :min="-99999" :max="99999" :step="1"></el-input-number>
+        </el-col>
+      </el-row>
+      <br />
+      <el-row :gutter="10" align="middle">
+        <el-col :span="9">
+          <span>x-step</span>
+          <el-input-number size="small" v-model="xStep" :min="1" :max="99999" :step="1"></el-input-number>
+        </el-col>
+        <el-col :span="9">
+          <span>y-step</span>
+          <el-input-number size="small" v-model="yStep" :min="1" :max="99999" :step="1"></el-input-number>
+        </el-col>
+      </el-row>
+      <div class="button-group">
+        <el-button type="primary" @click="submitMultiScan">提交</el-button>
+      </div>
+    </div>
+
+    <!-- 中间框：最大值和扫描结果 -->
+    <div class="middle-section">
+      <div class="max-result" v-if="maxResult">
+        <h3>最大值位置</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>X</th>
+              <th>Y</th>
+              <th>PM</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ maxResult.position2[0] }}</td>
+              <td>{{ maxResult.position2[1] }}</td>
+              <td>{{ maxResult.pm2 }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="scan-results" v-if="results.length > 0">
+        <h3>扫描结果</h3>
+        <!-- 下拉框 -->
+        <el-select v-model="selectedPage" placeholder="选择页数">
+          <el-option
+            v-for="page in totalPages"
+            :key="page"
+            :label="'第 ' + page + ' 页'"
+            :value="page"
+          ></el-option>
+        </el-select>
+        <!-- 扫描结果表格 -->
+        <table>
+          <thead>
+            <tr>
+              <th>X</th>
+              <th>Y</th>
+              <th>PM</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(result, index) in paginatedResults"
+              :key="index"
+            >
+              <td>{{ result.position[0] }}</td>
+              <td>{{ result.position[1] }}</td>
+              <td>{{ result.pm }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 右边框：图片轮播 -->
+    <div class="result-section">
+      <el-carousel indicator-position="outside" v-if="imgList.length > 0">
+        <el-carousel-item v-for="(item, index) in imgList" :key="index">
+          <img :src="item" alt="扫描结果图片" class="carousel-image" />
+        </el-carousel-item>
+      </el-carousel>
+      <p v-else><el-empty description="暂无图片"></el-empty></p>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      xStart: null,
+      xEnd: null,
+      yStart: null,
+      yEnd: null,
+      xStep: 1,
+      yStep: 1,
+      imgList: [], // 图片列表
+      results: [], // 扫描结果列表
+      maxResult: null, // 最大值结果
+      selectedPage: 1, // 当前选中的页数
+      rowsPerPage: 2, // 每页显示的行数
+    };
+  },
+  computed: {
+    totalPages() {
+      return Math.ceil(this.results.length / this.rowsPerPage); // 计算总页数
+    },
+    paginatedResults() {
+      const start = (this.selectedPage - 1) * this.rowsPerPage;
+      const end = start + this.rowsPerPage;
+      return this.results.slice(start, end); // 返回当前页的数据
+    },
+  },
+  methods: {
+    async submitMultiScan() {
+      console.log("提交扫描：", {
+        xStart: this.xStart,
+        xEnd: this.xEnd,
+        xStep: this.xStep,
+        yStart: this.yStart,
+        yEnd: this.yEnd,
+        yStep: this.yStep,
+      });
+
+      // 模拟数据
+      this.results = [
+        { position: [0, 0], pm: 1.2 },
+        { position: [5, 5], pm: 4.6 },
+        { position: [10, 10], pm: 7.8 },
+        { position: [0, 0], pm: 1.2 },
+        { position: [5, 5], pm: 4.6 },
+        { position: [10, 10], pm: 7.8 },
+      ];
+
+      this.maxResult = {
+        position2: [10, 10],
+        pm2: 7.8,
+      };
+
+      this.selectedPage = 1; // 重置为第一页
+    },
+    loadImages() {
+      const images = require.context("@/assets/", false, /\.(png|jpe?g|gif|svg)$/);
+      this.imgList = images.keys().map((key) => images(key));
+      console.log("加载的图片列表：", this.imgList);
+    },
+  },
+  mounted() {
+    this.loadImages();
+  },
+};
+</script>
+
+<style scoped>
+.grid-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+}
+
+.input-section,
+.middle-section,
+.result-section {
+  background-color: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
+  height: 100%; /* 保持与其他区域高度一致 */
+}
+
+.el-select {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.carousel-image {
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+  object-fit: contain; /* 确保图片完整显示 */
+}
+
+.el-carousel__item {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%; /* 确保图片占满容器 */
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table th,
+table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+}
+
+table th {
+  background-color: #f4f4f4;
+}
+</style>
