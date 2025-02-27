@@ -1,0 +1,82 @@
+import cv2
+import numpy as np
+import os
+
+# 设置要处理的文件夹路径
+folder_path = "/Users/longaotian/project/picture/"  # 替换为你的图片文件夹路径
+output_folder = os.path.join(folder_path, "processed")  # 处理后图片的保存目录
+
+# 确保输出文件夹存在
+if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
+
+# 获取文件夹内的所有图片文件
+image_files = [f for f in os.listdir(folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+i = 0
+
+# 遍历每张图片
+for image_file in image_files:
+    image_path = os.path.join(folder_path, image_file)
+    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+
+    if image is None:
+        print(f"无法读取图像: {image_file}")
+        continue
+
+    # 进行二值化处理
+    _, binary_image = cv2.threshold(image, 240, 255, cv2.THRESH_BINARY)
+
+    # 查找光斑轮廓
+    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # 创建副本以绘制
+    image_with_points = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    i += 1 
+
+    # 处理每个轮廓
+    for contour in contours:
+        moments = cv2.moments(contour)
+
+        # 计算质心
+        if moments["m00"] != 0:
+            cx = int(moments["m10"] / moments["m00"])
+            cy = int(moments["m01"] / moments["m00"])
+            cv2.circle(image_with_points, (cx, cy), 5, (0, 0, 255), -1)  # 画红色点（质心）
+
+        # 计算边界框
+        x, y, w, h = cv2.boundingRect(contour)
+
+        # 计算上下左右坐标
+        points = {
+            "上": (x + w // 2, y),
+            "下": (x + w // 2, y + h),
+            "左": (x, y + h // 2),
+            "右": (x + w, y + h // 2)
+        }
+
+        # 计算并标记上下左右点的灰度值
+        for pos, (px, py) in points.items():
+            gray_value = image[py, px] if 0 <= px < image.shape[1] and 0 <= py < image.shape[0] else 0
+            print(f"{image_file} - {pos} 坐标: ({px}, {py}), 灰度值: {gray_value}")
+            cv2.circle(image_with_points, (px, py), 5, (0, 255, 0), -1)  # 画绿色点
+
+        # 计算直径
+        diameter_x = points["右"][0] - points["左"][0]  # 右的 x 坐标 - 左的 x 坐标
+        diameter_y = points["下"][1] - points["上"][1]  # 下的 y 坐标 - 上的 y 坐标
+
+        print(f"{image_file} - 直径 X: {diameter_x}px, 直径 Y: {diameter_y}px")
+
+        # 绘制光斑外接圆
+        center = (x + w // 2, y + h // 2)
+        radius = max(w, h) // 2
+        cv2.circle(image_with_points, center, radius, (255, 0, 0), 2)  # 绘制蓝色圆形
+
+        # 绘制轮廓
+        cv2.drawContours(image_with_points, [contour], -1, (0, 255, 0), 2)
+        
+    # 保存处理后的图片
+    output_path = os.path.join(output_folder, f"processed_{image_file}")
+    cv2.imwrite(output_path, image_with_points)
+    print(f"处理完成: {image_file}, 结果已保存至 {output_path}")
+    
+print("所有图片处理完成！")
