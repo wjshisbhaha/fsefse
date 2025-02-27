@@ -1,0 +1,151 @@
+1. 导入必要的库
+python
+复制
+import cv2
+import numpy as np
+import os
+cv2：OpenCV 库，用于计算机视觉处理（图像读取、轮廓检测、绘制等）。
+numpy：用于矩阵和数值计算（如创建核、处理坐标等）。
+os：用于文件和目录操作（如遍历文件夹、创建目录）。
+2. 设置文件路径
+python
+复制
+folder_path = "/Users/longaotian/project/picture/"  # 替换为你的图片文件夹路径
+output_folder = os.path.join(folder_path, "processed")  # 处理后图片的保存目录
+folder_path：定义要处理的图片所在的文件夹路径。
+output_folder：定义处理后图片的保存路径（在 folder_path 目录下的 processed 文件夹）。
+3. 确保输出文件夹存在
+python
+复制
+if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
+检查 processed 文件夹是否存在：
+如果不存在，则使用 os.makedirs() 创建该文件夹，以便保存处理后的图像。
+4. 获取文件夹内的所有图片
+python
+复制
+image_files = [f for f in os.listdir(folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+遍历 folder_path 中的所有文件，筛选出扩展名为 .png、.jpg、.jpeg 的图片文件。
+5. 初始化计数变量
+python
+复制
+i = 0
+i 变量用于跟踪处理的图片数量，每处理一张图片 i += 1。
+6. 遍历文件夹中的每张图片
+python
+复制
+for image_file in image_files:
+遍历文件夹中的所有图片，对每张图片进行光斑检测和处理。
+7. 读取图片
+python
+复制
+image_path = os.path.join(folder_path, image_file)
+image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+image_path：获取当前图片的完整路径。
+cv2.imread()：
+读取图片，并使用 cv2.IMREAD_GRAYSCALE 以灰度模式加载（简化处理）。
+8. 检查图片是否成功读取
+python
+复制
+if image is None:
+    print(f"无法读取图像: {image_file}")
+    continue
+如果图片读取失败（例如文件损坏），则打印错误信息并跳过该文件。
+9. 二值化处理
+python
+复制
+_, binary_image = cv2.threshold(image, 240, 255, cv2.THRESH_BINARY)
+cv2.threshold()：
+阈值 = 240，如果像素值 大于 240，设为 255（白色），否则设为 0（黑色）。
+cv2.THRESH_BINARY：将图像转换为二值图（黑白）。
+10. 轮廓检测
+python
+复制
+contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+查找光斑的外部轮廓：
+cv2.RETR_EXTERNAL 只保留最外层轮廓，忽略内部轮廓。
+cv2.CHAIN_APPROX_SIMPLE 进行轮廓压缩，减少冗余点，提高效率。
+11. 创建副本以绘制标记
+python
+复制
+image_with_points = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+将灰度图转换为彩色图，这样可以在上面绘制彩色标记（OpenCV 只支持在 BGR 图像上绘制彩色元素）。
+12. 递增计数器
+python
+复制
+i += 1 
+处理完一张图片后，递增 i 计数，用于后续的逻辑控制。
+13. 遍历所有光斑轮廓
+python
+复制
+for contour in contours:
+遍历所有检测到的光斑轮廓，对每个轮廓进行分析。
+14. 计算光斑的质心
+python
+复制
+moments = cv2.moments(contour)
+
+if moments["m00"] != 0:
+    cx = int(moments["m10"] / moments["m00"])
+    cy = int(moments["m01"] / moments["m00"])
+    cv2.circle(image_with_points, (cx, cy), 5, (0, 0, 255), -1)  # 画红色点（质心）
+cv2.moments(contour) 计算轮廓的矩。
+计算质心 (cx, cy)：
+
+​
+ 
+在质心位置绘制红色点。
+15. 获取光斑的边界框
+python
+复制
+x, y, w, h = cv2.boundingRect(contour)
+计算光斑的最小外接矩形：
+(x, y): 左上角坐标。
+(w, h): 矩形的宽度和高度。
+16. 计算上下左右关键点
+python
+复制
+points = {
+    "上": (x + w // 2, y),
+    "下": (x + w // 2, y + h),
+    "左": (x, y + h // 2),
+    "右": (x + w, y + h // 2)
+}
+计算四个方向的坐标：
+上：矩形顶部中心点 (x + w // 2, y)
+下：矩形底部中心点 (x + w // 2, y + h)
+左：矩形左侧中心点 (x, y + h // 2)
+右：矩形右侧中心点 (x + w, y + h // 2)
+17. 遍历并获取灰度值
+python
+复制
+for pos, (px, py) in points.items():
+    gray_value = image[py, px] if 0 <= px < image.shape[1] and 0 <= py < image.shape[0] else 0
+    print(f"{image_file} - {pos} 坐标: ({px}, {py}), 灰度值: {gray_value}")
+    cv2.circle(image_with_points, (px, py), 5, (0, 255, 0), -1)  # 画绿色点
+计算每个关键点的灰度值并绘制绿色点。
+18. 计算光斑直径
+python
+复制
+diameter_x = points["右"][0] - points["左"][0]
+diameter_y = points["下"][1] - points["上"][1]
+
+print(f"{image_file} - 直径 X: {diameter_x}px, 直径 Y: {diameter_y}px")
+计算 X 方向直径 和 Y 方向直径。
+19. 绘制轮廓和外接圆
+python
+复制
+cv2.drawContours(image_with_points, [contour], -1, (0, 255, 0), 2)
+绘制绿色轮廓。
+20. 保存处理后的图片
+python
+复制
+output_path = os.path.join(output_folder, f"processed_{image_file}")
+cv2.imwrite(output_path, image_with_points)
+print(f"处理完成: {image_file}, 结果已保存至 {output_path}")
+保存并输出信息。
+总结： ✅ 提取光斑
+✅ 计算关键点（上下左右、质心）
+✅ 绘制标记（质心、轮廓、关键点）
+✅ 计算直径并输出
+✅ 自动批量处理文件夹中的所有图片
