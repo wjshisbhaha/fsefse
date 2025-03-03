@@ -1,0 +1,57 @@
+import cv2
+import numpy as np
+import pyautogui
+
+# 获取全屏截图用于选择 ROI 区域
+screenshot = pyautogui.screenshot()
+img_full = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+
+# 使用 OpenCV 的 selectROI 选择区域
+roi = cv2.selectROI("选择区域 (拖动鼠标确定区域后按 Enter)", img_full, False, False)
+cv2.destroyWindow("选择区域 (拖动鼠标确定区域后按 Enter)")
+x_roi, y_roi, w_roi, h_roi = roi
+print(f"选定区域坐标: ({x_roi}, {y_roi}), 宽: {w_roi}, 高: {h_roi}")
+
+while True:
+    # 截取指定区域 (region 参数格式：(left, top, width, height))
+    screenshot = pyautogui.screenshot(region=(x_roi, y_roi, w_roi, h_roi))
+    img = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+
+    # 创建掩码，筛选出像素值严格为 [255, 255, 255] 的白色区域
+    mask = cv2.inRange(img, np.array([254, 255, 255]), np.array([255, 255, 255]))
+
+    # 查找轮廓
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if contours:
+        # 选择面积最大的区域作为亮点
+        largest = max(contours, key=cv2.contourArea)
+
+        # 绘制轮廓（绿色）
+        # cv2.drawContours(img, [largest], -1, (0, 255, 0), 2)
+
+        # 计算边界框，并绘制（红色矩形框）
+        x, y, w, h = cv2.boundingRect(largest)
+        cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 2)
+
+        # 在图像上添加文字提示"监测到亮光"
+        text = f"jiance255"
+        cv2.putText(img, text, (x, y - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+
+        # 在图像上添加亮光的坐标
+        coord_text = f"zuobiao: ({x}, {y})"
+        cv2.putText(img, coord_text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+
+        # 控制台输出提示信息
+        print(f"检测到亮光：边界框坐标: 左上 ({x}, {y}), 右下 ({x + w}, {y + h})")
+    else:
+        print("未检测到 RGB 值为 255 的亮点。")
+
+    # 显示结果图像
+    cv2.imshow("实时检测区域", img)
+
+    # 按 "q" 键退出循环
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cv2.destroyAllWindows()
