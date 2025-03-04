@@ -1,0 +1,106 @@
+import cv2
+import numpy as np
+import pyautogui
+import os
+import time
+
+# 函数：绘制检测到的亮光信息
+def draw_light_info(img, contours):
+    """
+    在图像上绘制检测到的亮光信息。
+    参数：
+    - img: 原始图像
+    - contours: 轮廓列表
+    返回：
+    - 处理后的图像
+    """
+    for contour in contours:
+        # 选择面积最大的区域作为亮点
+        x, y, w, h = cv2.boundingRect(contour)
+
+        # 绘制轮廓（绿色）
+        cv2.drawContours(img, [contour], -1, (0, 255, 0), 2)
+
+        # 绘制边界框（红色矩形框）
+        cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 2)
+
+        # 在图像上添加文字提示"监测到亮光"
+        text = f"监测到亮光"
+        cv2.putText(img, text, (x, y - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+
+        # 显示亮光坐标
+        coord_text = f"坐标: ({x}, {y})"
+        cv2.putText(img, coord_text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+        
+    return img
+
+# 函数：处理图像
+def process_frame(img):
+    """
+    对图像进行处理，检测亮光并返回标记后的图像。
+    """
+    # 创建掩码，筛选出像素值严格为 [255, 255, 255] 的白色区域
+    mask = cv2.inRange(img, np.array([255, 255, 255]), np.array([255, 255, 255]))
+
+    # 查找轮廓
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # 如果有轮廓，绘制相关信息
+    if contours:
+        img = draw_light_info(img, contours)
+    else:
+        print("未检测到 RGB 值为 255 的亮点。")
+
+    return img
+
+# 函数：保存图像
+def save_frame(frame, folder_path):
+    """
+    保存每一帧图像到文件夹中
+    """
+    timestamp = int(time.time() * 1000)  # 使用毫秒时间戳作为文件名
+    image_path = os.path.join(folder_path, f"{timestamp}.jpg")
+    cv2.imwrite(image_path, frame)
+    return image_path
+
+# 主函数
+def main():
+    folder_path = "saved_images"  # 设置保存图像的文件夹路径
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)  # 如果文件夹不存在，创建它
+    
+    cap = cv2.VideoCapture(0)  # 打开相机（0是默认摄像头）
+    if not cap.isOpened():
+        print("无法打开相机")
+        return
+    
+    print("开始实时捕捉相机数据...")
+    
+    # 读取并保存每一帧图像
+    while True:
+        ret, frame = cap.read()  # 捕捉每一帧
+        if not ret:
+            print("无法读取相机数据")
+            break
+        
+        # 保存当前帧图像
+        saved_image_path = save_frame(frame, folder_path)
+        print(f"已保存图像：{saved_image_path}")
+        
+        # 处理图像：检测亮光并绘制相关信息
+        processed_frame = process_frame(frame)
+
+        # 显示结果图像
+        cv2.imshow("实时检测区域", processed_frame)
+
+        # 按 "q" 键退出循环
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            print("程序退出")
+            break
+
+    # 释放相机并关闭窗口
+    cap.release()
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    main()
