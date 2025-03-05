@@ -1,0 +1,94 @@
+import cv2
+import numpy as np
+import os
+import time
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
+# 设置要处理的文件夹路径
+folder_path = "/Users/longaotian/Desktop/gb"  # 替换为你的图片文件夹路径
+output_folder = os.path.join(folder_path, "processed")  # 处理后图片的保存目录
+
+# 确保输出文件夹存在
+if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
+
+
+# 函数：处理图像并查找光斑
+def process_image(image_path):
+    img = cv2.imread(image_path)
+
+    if img is None:
+        print(f"无法读取图像: {image_path}")
+        return
+
+    # 创建掩码，筛选出像素值在 [254, 255, 255] 和 [255, 255, 255] 之间的区域
+    mask = cv2.inRange(img, np.array([255, 255, 255]), np.array([255, 255, 255]))
+
+    # 查找轮廓
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if contours:
+        # 选择面积最大的区域作为亮点
+        largest = max(contours, key=cv2.contourArea)
+
+        # 计算边界框
+        x, y, w, h = cv2.boundingRect(largest)
+
+        # 在图像上绘制边界框（红色矩形框）
+        cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 2)
+
+        # 在图像上添加文字提示"监测到亮光"
+        text = f"jiance255"
+        cv2.putText(img, text, (x, y - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+
+        # 在图像上添加亮光的坐标
+        coord_text = f"zuobiao: ({x}, {y})"
+        cv2.putText(img, coord_text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+
+        # 保存处理后的图片
+        output_path = os.path.join(output_folder, f"processed_{os.path.basename(image_path)}")
+        cv2.imwrite(output_path, img)
+        print(f"处理完成: {image_path}, 结果已保存至 {output_path}")
+
+        # 显示处理后的图像
+        cv2.imshow("Detected Light Spot", img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    else:
+        print(f"未检测到 RGB 值为 255 的亮点: {image_path}")
+
+
+# 文件夹事件处理类
+class WatcherHandler(FileSystemEventHandler):
+    def on_created(self, event):
+        # 检测到新文件时进行处理
+        if event.is_directory:
+            return
+        elif event.src_path.lower().endswith(('.png', '.jpg', '.jpeg')):
+            print(f"新文件检测到: {event.src_path}")
+            process_image(event.src_path)
+
+
+# 主函数：监控文件夹并实时处理新图像
+def main():
+    event_handler = WatcherHandler()
+    observer = Observer()
+    observer.schedule(event_handler, folder_path, recursive=False)
+
+    print(f"开始监控文件夹: {folder_path}")
+
+    # 开始监控
+    observer.start()
+
+    try:
+        while True:
+            time.sleep(1)  # 保持主线程活跃
+    except KeyboardInterrupt:
+        print("手动退出监控")
+        observer.stop()
+    observer.join()
+
+
+if __name__ == "__main__":
+    main()
