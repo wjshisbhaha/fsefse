@@ -1,0 +1,47 @@
+import requests
+from bs4 import BeautifulSoup
+
+
+def requs(url, method):
+    try:
+        if method == 'GET':
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
+            }
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                # 解析页面内容
+                soup = BeautifulSoup(response.text, 'html.parser')
+
+                # 提取一周口碑榜的电影列表
+                movie_list = soup.find_all('tr', class_='item')
+
+                movies = []
+                for movie in movie_list:
+                    # 提取电影名
+                    movie_name = movie.select_one('div.pl2 span').text.strip()
+
+                    # 提取导演/作者
+                    lst = movie.select_one('p').text.strip()
+                    new_lst = str(lst).split('/')[0].split('(')[0]
+
+                    # 提取评分
+                    rating = movie.select_one('span.rating_nums').text.strip() if movie.select_one(
+                        'span.rating_nums') else '无评分'
+
+                    # 提取评论数量
+                    comment = movie.select_one('span.pl').text.strip()
+                    new_comment = str(comment).replace("人评价)", "").replace("(", "")
+
+                    # 返回电影信息
+                    movies.append((movie_name, new_lst, new_lst, rating, new_comment))
+
+                return movies
+        elif method == 'POST':
+            response = requests.post(url)
+            # 这里可以添加更多的 POST 请求处理代码
+
+        return []
+
+    except requests.RequestException as e:
+        return f"请求失败: {e}"
