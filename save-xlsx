@@ -1,0 +1,91 @@
+import sys
+import pandas as pd
+from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QPushButton, QFileDialog
+from PyQt6.QtCore import Qt
+
+class TableExample(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle('动态表格行操作')
+        self.setGeometry(100, 100, 600, 400)
+
+        # 创建 QTableWidget 实例
+        self.tableWidget = QTableWidget(self)
+        self.tableWidget.setRowCount(0)  # 初始化为 0 行
+        self.tableWidget.setColumnCount(4)  # 4 列
+        self.tableWidget.setHorizontalHeaderLabels(['名字', '年份', '评分', '评价数'])
+
+        # 创建按钮
+        self.add_button = QPushButton('添加行', self)
+        self.remove_button = QPushButton('删除行', self)
+        self.export_button = QPushButton('导出为Excel', self)
+
+        # 连接按钮点击事件
+        self.add_button.clicked.connect(self.add_row)
+        self.remove_button.clicked.connect(self.remove_row)
+        self.export_button.clicked.connect(self.export_to_excel)
+
+        # 设置布局
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.tableWidget)
+        layout.addWidget(self.add_button)
+        layout.addWidget(self.remove_button)
+        layout.addWidget(self.export_button)
+        self.setLayout(layout)
+
+    def add_row(self):
+        # 获取当前行数
+        row_position = self.tableWidget.rowCount()
+
+        # 插入一行
+        self.tableWidget.insertRow(row_position)
+
+        # 为新行添加数据
+        self.tableWidget.setItem(row_position, 0, QTableWidgetItem(f"电影{row_position + 1}"))
+        self.tableWidget.setItem(row_position, 1, QTableWidgetItem("2024-01-01"))
+        self.tableWidget.setItem(row_position, 2, QTableWidgetItem("6.5"))
+        self.tableWidget.setItem(row_position, 3, QTableWidgetItem("10000"))
+
+    def remove_row(self):
+        # 获取选中的行
+        selected_row = self.tableWidget.currentRow()
+        if selected_row >= 0:
+            self.tableWidget.removeRow(selected_row)  # 删除选中的行
+
+    def export_to_excel(self):
+        # 获取表格的行数和列数
+        row_count = self.tableWidget.rowCount()
+        column_count = self.tableWidget.columnCount()
+
+        # 创建一个空的列表，用于存储表格数据
+        data = []
+
+        # 提取每一行数据
+        for row in range(row_count):
+            row_data = []
+            for column in range(column_count):
+                item = self.tableWidget.item(row, column)
+                if item is not None:
+                    row_data.append(item.text())  # 获取单元格文本内容
+                else:
+                    row_data.append("")  # 如果单元格为空，添加空字符串
+            data.append(row_data)
+
+        # 使用 pandas 创建 DataFrame
+        df = pd.DataFrame(data, columns=['名字', '年份', '评分', '评价数'])
+
+        # 打开文件对话框让用户选择保存路径
+        options = QFileDialog.Options()
+        file_path, _ = QFileDialog.getSaveFileName(self, "保存为 Excel", "", "Excel 文件 (*.xlsx)", options=options)
+
+        if file_path:
+            # 将 DataFrame 导出为 Excel 文件
+            df.to_excel(file_path, index=False, engine='openpyxl')
+            print(f"文件已保存为：{file_path}")
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = TableExample()
+    window.show()
+    sys.exit(app.exec())
