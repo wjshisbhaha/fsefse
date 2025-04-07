@@ -109,3 +109,24 @@ if __name__ == "__main__":
     window = ExcelApp()
     window.show()
     sys.exit(app.exec())
+
+
+import win32com.client
+
+# 创建 NanoScan 应用程序对象
+nanoScan = win32com.client.Dispatch("NanoScan.Application")
+
+# 连接到 NanoScan 设备
+nanoScan.Open()
+
+# 获取当前的测量数据
+# 例如，获取 X 轴和 Y 轴的光束宽度
+beam_width_x = nanoScan.BeamWidthX
+beam_width_y = nanoScan.BeamWidthY
+
+print(f"Beam Width X: {beam_width_x} µm")
+print(f"Beam Width Y: {beam_width_y} µm")
+
+# 完成后关闭连接
+nanoScan.Close()
+
