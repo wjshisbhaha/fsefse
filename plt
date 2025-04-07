@@ -47,3 +47,65 @@ def plot(self):
     self.canvas.draw()
 
 
+import sys
+import pandas as pd
+from PyQt6 import QtWidgets
+from read_excel_ui import Ui_Form  # 假设你把生成的类保存为 read_excel_ui.py
+
+
+class ExcelApp(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+        self.ui = Ui_Form()
+        self.ui.setupUi(self)
+
+        self.df = None  # 存储 DataFrame
+
+        # 连接按钮事件
+        self.ui.pushButton.clicked.connect(self.load_excel)
+        self.ui.pushButton_2.clicked.connect(self.export_excel)
+
+    def load_excel(self):
+        file_dialog = QtWidgets.QFileDialog(self)
+        file_path, _ = file_dialog.getOpenFileName(self, "选择 Excel 文件", "", "Excel Files (*.xlsx *.xls)")
+
+        if file_path:
+            try:
+                self.df = pd.read_excel(file_path)
+                self.show_in_table(self.df)
+            except Exception as e:
+                QtWidgets.QMessageBox.critical(self, "错误", f"读取文件失败：{e}")
+
+    def show_in_table(self, df):
+        table = self.ui.tableWidget
+        table.clear()
+        table.setRowCount(df.shape[0])
+        table.setColumnCount(df.shape[1])
+        table.setHorizontalHeaderLabels(df.columns.astype(str))
+
+        for row in range(df.shape[0]):
+            for col in range(df.shape[1]):
+                item = QtWidgets.QTableWidgetItem(str(df.iat[row, col]))
+                table.setItem(row, col, item)
+
+    def export_excel(self):
+        if self.df is None:
+            QtWidgets.QMessageBox.warning(self, "提示", "请先读取 Excel 文件")
+            return
+
+        folder_dialog = QtWidgets.QFileDialog(self)
+        folder = folder_dialog.getExistingDirectory(self, "选择保存文件夹")
+        if folder:
+            save_path = f"{folder}/导出数据.xlsx"
+            try:
+                self.df.to_excel(save_path, index=False)
+                QtWidgets.QMessageBox.information(self, "成功", f"数据已保存到：{save_path}")
+            except Exception as e:
+                QtWidgets.QMessageBox.critical(self, "错误", f"保存失败：{e}")
+
+
+if __name__ == "__main__":
+    app = QtWidgets.QApplication(sys.argv)
+    window = ExcelApp()
+    window.show()
+    sys.exit(app.exec())
